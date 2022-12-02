@@ -109,11 +109,31 @@ namespace AgGateway.ADAPT.ISOv4Plugin.ExtensionMethods
             }
         }
 
+        private static readonly string[] _isoDateFormats = new string[] {
+            // With millisecond precision
+            "yyyy-MM-ddTHH:mm:ss.fffzzz", // Full timezone offset; e.g. -05:00
+            "yyyy-MM-ddTHH:mm:ss.fffz",   // 2-digit timezone offset; e.g. -05
+            "yyyy-MM-ddTHH:mm:ss.fffZ",    // UTC
+            // Without millisecond precision
+            "yyyy-MM-ddTHH:mm:sszzz",
+            "yyyy-MM-ddTHH:mm:ssz",
+            "yyyy-MM-ddTHH:mm:ssZ"
+        };
+
         public static DateTime? GetXmlNodeValueAsNullableDateTime(this XmlNode xmlNode, string xPath)
         {
             string value = GetXmlNodeValue(xmlNode, xPath);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+            
             DateTime outValue;
-            if (DateTime.TryParse(value, out outValue))
+            if (DateTime.TryParseExact(value, _isoDateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out outValue))
+            {
+                return outValue;
+            }
+            else if (DateTime.TryParse(value, out outValue))
             {
                 return outValue;
             }
