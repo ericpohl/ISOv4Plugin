@@ -16,7 +16,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
     #region Import
     public interface IWorkingDataMapper
     {
-        List<WorkingData> Map(ISOTime time, IEnumerable<ISOSpatialRow> isoRecords, DeviceElementUse deviceElementUse, DeviceHierarchyElement isoDeviceElementHierarchy, List<DeviceElementUse> pendingDeviceElementUses, ProductAllocationMap isoProductAllocations);
+        List<WorkingData> Map(ISOTime time, IEnumerable<ISOSpatialRow> isoRecords, DeviceElementUse deviceElementUse, DeviceHierarchyElement isoDeviceElementHierarchy, List<DeviceElementUse> pendingDeviceElementUses, ProductAllocations isoProductAllocations);
         WorkingData ConvertToBaseType(WorkingData meter);
         Dictionary<int, ISODataLogValue> DataLogValuesByWorkingDataID { get; set; }
         Dictionary<int, string> ISODeviceElementIDsByWorkingDataID { get; set; }
@@ -45,12 +45,12 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                                      DeviceElementUse deviceElementUse,
                                      DeviceHierarchyElement isoDeviceElementHierarchy,
                                      List<DeviceElementUse> pendingDeviceElementUses,
-                                     ProductAllocationMap isoProductAllocations)
+                                     ProductAllocations isoProductAllocations)
         {
             var workingDatas = new List<WorkingData>();
 
             //Create vrProductIndex on relevant device elements if more than one product on this OperationData
-            if (isoProductAllocations.GetDistinctProductIDs(TaskDataMapper).Count > 1 && 
+            if (isoProductAllocations.GetDistinctProductIDs().Count > 1 && 
                 isoProductAllocations.GovernDevice(isoDeviceElementHierarchy.DeviceElement))
             {
                 WorkingData workingData = CreateProductIndexWorkingData(deviceElementUse.Id.ReferenceId);

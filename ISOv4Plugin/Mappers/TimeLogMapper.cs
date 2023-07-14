@@ -363,10 +363,11 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                 foreach (ISODevice dvc in loggedDeviceElementsByDevice.Keys)
                 {
                     //Determine products
-                    ProductAllocationMap deviceProductAllocations = GetProductAllocationsByDeviceElement(loggedTask, dvc);
+                    ProductAllocations deviceProductAllocations = GetProductAllocationsByDeviceElement(loggedTask, dvc);
 
                     //Create a separate operation for each combination of specific product properties.
-                    List<List<string>> deviceElementGroups = deviceProductAllocations.SplitElementsByProductProperties(loggedDeviceElementsByDevice[dvc], dvc);
+                    List<List<string>> deviceElementGroups = 
+                        deviceProductAllocations.SplitElementsByProductProperties(loggedDeviceElementsByDevice[dvc], dvc);
 
                     foreach (var deviceElementGroup in deviceElementGroups)
                     {
@@ -375,11 +376,8 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                         //Get ids of all device elements in a group including parent element ids
                         //since product allocations can be at parent elements which are not logging any data.
                         var elementHierarchyIds = GetISOElementHierarchyIds(deviceElementGroup);
-                        ProductAllocationMap productAllocations = new ProductAllocationMap(
-                            deviceProductAllocations
-                            .Where(x => elementHierarchyIds.Contains(x.Key))
-                            .ToDictionary(x => x.Key, x => x.Value), TaskDataMapper);
-                        List<int> productIDs = productAllocations.GetDistinctProductIDs(TaskDataMapper);
+                        ProductAllocations productAllocations = deviceProductAllocations.WithElementHierarchies(elementHierarchyIds);
+                        List<int> productIDs = productAllocations.GetDistinctProductIDs();
 
                         //This line will necessarily invoke a spatial read in order to find 
                         //1)The correct number of CondensedWorkState working datas to create 
@@ -433,7 +431,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             return isoTimeLog.GetTimeElement(this.TaskDataPath);
         }
 
-        private ProductAllocationMap GetProductAllocationsByDeviceElement(ISOTask loggedTask, ISODevice dvc)
+        private ProductAllocations GetProductAllocationsByDeviceElement(ISOTask loggedTask, ISODevice dvc)
         {
             Dictionary<string, Dictionary<string, ISOProductAllocation>> reportedPANs = new Dictionary<string, Dictionary<string, ISOProductAllocation>>();
             int panIndex = 0; // This supports multiple direct PANs for the same DET
@@ -468,12 +466,13 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                 .Where(x => x != null)
                 .FirstOrDefault();
             int lowestLevel = GetLowestProductAllocationLevel(det?.GetRootDeviceElementHierarchy(), output);
+
             // Remove allocations for all other levels
-            var pruned = output
+            Dictionary<string, List<ISOProductAllocation>> pruned = output
                 .Where(x => TaskDataMapper.DeviceElementHierarchies.GetMatchingElement(x.Key)?.Depth == lowestLevel)
                 .ToDictionary(x => x.Key, x => x.Value);
 
-            return new ProductAllocationMap(pruned, TaskDataMapper);
+            return new ProductAllocations(pruned, TaskDataMapper);
         }
 
         private int GetLowestProductAllocationLevel(DeviceHierarchyElement isoDeviceElementHierarchy, Dictionary<string, List<ISOProductAllocation>> isoProductAllocations)
