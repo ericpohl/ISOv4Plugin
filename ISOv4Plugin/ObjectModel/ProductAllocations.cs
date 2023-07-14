@@ -11,6 +11,10 @@ using AgGateway.ADAPT.ISOv4Plugin.Mappers;
 
 namespace AgGateway.ADAPT.ISOv4Plugin.ISOModels
 {
+    /// <summary>
+    /// A wrapper around a dictionary of ISOProductAllocation lists, keyed by device element id,
+    /// which contains additional logic to ascend the device element hierarchy if necessary.
+    /// </summary>
     public class ProductAllocations : IEnumerable<KeyValuePair<string, List<ISOProductAllocation>>>
     {
         private readonly Dictionary<string, List<ISOProductAllocation>> _productAllocations;
@@ -22,29 +26,21 @@ namespace AgGateway.ADAPT.ISOv4Plugin.ISOModels
             _taskDataMapper = taskDataMapper ?? throw new ArgumentNullException(nameof(taskDataMapper));
         }
 
-        public IEnumerator<KeyValuePair<string, List<ISOProductAllocation>>> GetEnumerator()
-        {
-            return _productAllocations.GetEnumerator();
-        }
+        public IEnumerator<KeyValuePair<string, List<ISOProductAllocation>>> GetEnumerator() => _productAllocations.GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return _productAllocations.GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() => _productAllocations.GetEnumerator();
 
         public List<ISOProductAllocation> this[string detID]
         {
             get
             {
-                List<ISOProductAllocation> list;
-
                 // If the device elment ID is in the dictionary directly, return its allocation list straightaway
-                if (_productAllocations.TryGetValue(detID, out list))
+                if (_productAllocations.TryGetValue(detID, out List<ISOProductAllocation> list))
                 {
                     return list;
                 }
 
-                // Otherwise, go up the ancestor hierarchy
+                // Otherwise, go up the device element hierarchy
                 ISODeviceElement deviceElement = _taskDataMapper.DeviceElementHierarchies.GetISODeviceElementFromID(detID);
                 foreach (ISODeviceElement element in deviceElement.Ancestors)
                 {
@@ -54,8 +50,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.ISOModels
                     }
                 }
 
-                // TODO: Finish this out.
-                throw new NotImplementedException();
+                throw new KeyNotFoundException();
             }
         }
         
