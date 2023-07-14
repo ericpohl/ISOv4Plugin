@@ -502,5 +502,32 @@ namespace AgGateway.ADAPT.ISOv4Plugin.ObjectModel
                 }
             }
         }
+
+        internal List<string> FilterDeviceElementIds(List<string> idsToRemove)
+        {
+            var elementIdsToKeep = new List<string>();
+            if (!idsToRemove.Contains(DeviceElement.DeviceElementId))
+            {
+                //By default we need to keep this element - covers scenario of no children elements
+                bool addThisElement = true;
+                if (Children != null && Children.Count > 0)
+                {
+                    foreach (var c in Children)
+                    {
+                        elementIdsToKeep.AddRange(c.FilterDeviceElementIds(idsToRemove));
+                    }
+                    //Keep this element if at least one child element is kept
+                    addThisElement = elementIdsToKeep.Count > 0;
+                }
+
+                if (addThisElement)
+                {
+                    elementIdsToKeep.Add(DeviceElement.DeviceElementId);
+                }
+            }
+            return elementIdsToKeep;
+        }
+
+
     }  
 }

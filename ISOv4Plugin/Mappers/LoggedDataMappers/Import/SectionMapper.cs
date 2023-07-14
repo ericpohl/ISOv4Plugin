@@ -10,7 +10,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
 {
     public interface ISectionMapper
     {
-        List<DeviceElementUse> Map(ISOTime time, IEnumerable<ISOSpatialRow> isoRecords, int operationDataId, IEnumerable<string> isoDeviceElementIDs, Dictionary<string, List<ISOProductAllocation>> isoProductAllocations);
+        List<DeviceElementUse> Map(ISOTime time, IEnumerable<ISOSpatialRow> isoRecords, int operationDataId, IEnumerable<string> isoDeviceElementIDs, ProductAllocationMap isoProductAllocations);
         List<DeviceElementUse> ConvertToBaseTypes(List<DeviceElementUse> meters);
     }
 
@@ -28,7 +28,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                                           IEnumerable<ISOSpatialRow> isoRecords,
                                           int operationDataId,
                                           IEnumerable<string> isoDeviceElementIDs,
-                                          Dictionary<string, List<ISOProductAllocation>> isoProductAllocations)
+                                          ProductAllocationMap isoProductAllocations)
         {
             var sections = new List<DeviceElementUse>();
             foreach (string isoDeviceElementID in isoDeviceElementIDs)

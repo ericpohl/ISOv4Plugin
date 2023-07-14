@@ -12,8 +12,8 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
 {
     public interface ISpatialRecordMapper
     {
-        IEnumerable<SpatialRecord> Map(IEnumerable<ISOSpatialRow> isoSpatialRows, List<WorkingData> meters, Dictionary<string, List<ISOProductAllocation>> productAllocations);
-        SpatialRecord Map(ISOSpatialRow isoSpatialRow, List<WorkingData> meters, Dictionary<string, List<ISOProductAllocation>> productAllocations);
+        IEnumerable<SpatialRecord> Map(IEnumerable<ISOSpatialRow> isoSpatialRows, List<WorkingData> meters, ProductAllocationMap productAllocations);
+        SpatialRecord Map(ISOSpatialRow isoSpatialRow, List<WorkingData> meters, ProductAllocationMap productAllocations);
     }
 
     public class SpatialRecordMapper : ISpatialRecordMapper
@@ -35,14 +35,14 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             _taskDataMapper = taskDataMapper;
         }
 
-        public IEnumerable<SpatialRecord> Map(IEnumerable<ISOSpatialRow> isoSpatialRows, List<WorkingData> meters, Dictionary<string, List<ISOProductAllocation>> productAllocations)
+        public IEnumerable<SpatialRecord> Map(IEnumerable<ISOSpatialRow> isoSpatialRows, List<WorkingData> meters, ProductAllocationMap productAllocations)
         {
             //Compare the first spatial record to product allocations in case there is a mismatch between local time and UTC in comparing dates
             //This value will reflect an offset between the processing computer's timezone settings vs. the actual offset of the data itself,
             //and serves to provide a correction if PANs were reported as UTC.
             //This code will require an exact minute/second match between the first record and one of the PANs to take effect
             ISOSpatialRow firstSpatialRow = isoSpatialRows.FirstOrDefault();
-            if (firstSpatialRow != null && productAllocations.Any())
+            if (firstSpatialRow != null && !productAllocations.IsEmpty)
             {
                 foreach (ISOProductAllocation pan in productAllocations.First().Value)
                 {
@@ -60,7 +60,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             return isoSpatialRows.Select(r => Map(r, meters, productAllocations));
         }
 
-        public SpatialRecord Map(ISOSpatialRow isoSpatialRow, List<WorkingData> meters, Dictionary<string, List<ISOProductAllocation>> productAllocations)
+        public SpatialRecord Map(ISOSpatialRow isoSpatialRow, List<WorkingData> meters, ProductAllocationMap productAllocations)
         {
             var spatialRecord = new SpatialRecord();
 
@@ -106,7 +106,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             }
         }
 
-        private void SetNumericMeterValue(ISOSpatialRow isoSpatialRow, NumericWorkingData meter, SpatialRecord spatialRecord, Dictionary<string, List<ISOProductAllocation>> productAllocations)
+        private void SetNumericMeterValue(ISOSpatialRow isoSpatialRow, NumericWorkingData meter, SpatialRecord spatialRecord, ProductAllocationMap productAllocations)
         {
             var dataLogValue = _workingDataMapper.DataLogValuesByWorkingDataID.ContainsKey(meter.Id.ReferenceId)
                 ? _workingDataMapper.DataLogValuesByWorkingDataID[meter.Id.ReferenceId]
@@ -142,9 +142,9 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                 ISODeviceElement deviceElement = _taskDataMapper.DeviceElementHierarchies.GetISODeviceElementFromID(detID);
                 if (productAllocations.GovernDevice(deviceElement)) //The DeviceElement for this meter, or one of the DeviceElement's ancestors, exists in the list of allocations
                 {
-                    var productAllocationsForDeviceElement = productAllocations[detID];
+                    List<ISOProductAllocation> productAllocationsForDeviceElement = productAllocations[detID];
                     double numericValue = 0d;
-                    if (productAllocationsForDeviceElement.Count == 1 || TimeLogMapper.GetDistinctProductIDs(_taskDataMapper, productAllocations).Count == 1)
+                    if (productAllocationsForDeviceElement.Count == 1 || productAllocations.GetDistinctProductIDs(_taskDataMapper).Count == 1)
                     {
                         //This product is consistent throughout the task on this device element
                         int? adaptProductID = _taskDataMapper.InstanceIDMap.GetADAPTID(productAllocationsForDeviceElement.Single().ProductIdRef);

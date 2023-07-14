@@ -363,10 +363,10 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                 foreach (ISODevice dvc in loggedDeviceElementsByDevice.Keys)
                 {
                     //Determine products
-                    Dictionary<string, List<ISOProductAllocation>> deviceProductAllocations = GetProductAllocationsByDeviceElement(loggedTask, dvc);
+                    ProductAllocationMap deviceProductAllocations = GetProductAllocationsByDeviceElement(loggedTask, dvc);
 
                     //Create a separate operation for each combination of specific product properties.
-                    List<List<string>> deviceElementGroups = SplitElementsByProductProperties(deviceProductAllocations, loggedDeviceElementsByDevice[dvc], dvc);
+                    List<List<string>> deviceElementGroups = deviceProductAllocations.SplitElementsByProductProperties(loggedDeviceElementsByDevice[dvc], dvc);
 
                     foreach (var deviceElementGroup in deviceElementGroups)
                     {
@@ -375,10 +375,11 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                         //Get ids of all device elements in a group including parent element ids
                         //since product allocations can be at parent elements which are not logging any data.
                         var elementHierarchyIds = GetISOElementHierarchyIds(deviceElementGroup);
-                        Dictionary<string, List<ISOProductAllocation>> productAllocations = deviceProductAllocations
+                        ProductAllocationMap productAllocations = new ProductAllocationMap(
+                            deviceProductAllocations
                             .Where(x => elementHierarchyIds.Contains(x.Key))
-                            .ToDictionary(x => x.Key, x => x.Value);
-                        List<int> productIDs = GetDistinctProductIDs(TaskDataMapper, productAllocations);
+                            .ToDictionary(x => x.Key, x => x.Value), TaskDataMapper);
+                        List<int> productIDs = productAllocations.GetDistinctProductIDs(TaskDataMapper);
 
                         //This line will necessarily invoke a spatial read in order to find 
                         //1)The correct number of CondensedWorkState working datas to create 
@@ -413,81 +414,6 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             return null;
         }
 
-        private List<List<string>> SplitElementsByProductProperties(Dictionary<string, List<ISOProductAllocation>> productAllocations, HashSet<string> loggedDeviceElementIds, ISODevice dvc)
-        {
-            //This function splits device elements logged by single TimeLog into groups based
-            //on product form/type referenced by these elements. This is done using following logic:
-            // - determine used products forms and list of device element ids for each form
-            // - for each product form determine device elements from all other forms
-            // - remove these device elements and their children from a copy of device hierarchy elements
-            // - this gives a list of device elements to keep for a product form
-            var deviceElementIdsByProductForm = productAllocations
-                .SelectMany(x => x.Value.Select(y => new { Product = GetProductByProductAllocation(y), Id = x.Key }))
-                .Where(x => x.Product != null)
-                .GroupBy(x => new { x.Product.Form, x.Product.ProductType }, x => x.Id)
-                .Select(x => x.Distinct().ToList())
-                .ToList();
-
-            List<List<string>> deviceElementGroups = new List<List<string>>();
-            if (deviceElementIdsByProductForm.Count > 1)
-            {
-                var deviceHierarchyElement = TaskDataMapper.DeviceElementHierarchies.Items[dvc.DeviceId];
-
-                var idsWithProduct = deviceElementIdsByProductForm.SelectMany(x => x).ToList();
-                foreach (var deviceElementIds in deviceElementIdsByProductForm)
-                {
-                    var idsToRemove = idsWithProduct.Except(deviceElementIds).ToList();
-                    var idsToKeep = FilterDeviceElementIds(deviceHierarchyElement, idsToRemove);
-
-                    deviceElementGroups.Add(loggedDeviceElementIds.Intersect(idsToKeep).ToList());
-                }
-            }
-            else
-            {
-                deviceElementGroups.Add(loggedDeviceElementIds.ToList());
-            }
-
-            return deviceElementGroups;
-        }
-
-        private Product GetProductByProductAllocation(ISOProductAllocation pan)
-        {
-            var adaptProductId = TaskDataMapper.InstanceIDMap.GetADAPTID(pan.ProductIdRef);
-            var adaptProduct = TaskDataMapper.AdaptDataModel.Catalog.Products.FirstOrDefault(x => x.Id.ReferenceId == adaptProductId);
-
-            // Add an error if ProductAllocation is referencing non-existent product
-            if (adaptProduct == null)
-            {
-                TaskDataMapper.AddError($"ProductAllocation referencing Product={pan.ProductIdRef} skipped since no matching product found");
-            }
-            return adaptProduct;
-        }
-
-        private List<string> FilterDeviceElementIds(DeviceHierarchyElement deviceHierarchyElement, List<string> idsToRemove)
-        {
-            var elementIdsToKeep = new List<string>();
-            if (!idsToRemove.Contains(deviceHierarchyElement.DeviceElement.DeviceElementId))
-            {
-                //By default we need to keep this element - covers scenario of no children elements
-                bool addThisElement = true;
-                if (deviceHierarchyElement.Children != null && deviceHierarchyElement.Children.Count > 0)
-                {
-                    foreach (var c in deviceHierarchyElement.Children)
-                    {
-                        elementIdsToKeep.AddRange(FilterDeviceElementIds(c, idsToRemove));
-                    }
-                    //Keep this element if at least one child element is kept
-                    addThisElement = elementIdsToKeep.Count > 0;
-                }
-
-                if (addThisElement)
-                {
-                    elementIdsToKeep.Add(deviceHierarchyElement.DeviceElement.DeviceElementId);
-                }
-            }
-            return elementIdsToKeep;
-        }
-
         private List<string> GetISOElementHierarchyIds(List<string> deviceElementIds)
         {
             return deviceElementIds.Aggregate(new { ids = new HashSet<string>(), TaskDataMapper.DeviceElementHierarchies }, (acc, x) =>
@@ -507,24 +433,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             return isoTimeLog.GetTimeElement(this.TaskDataPath);
         }
 
-        internal static List<int> GetDistinctProductIDs(TaskDataMapper taskDataMapper, Dictionary<string, List<ISOProductAllocation>> productAllocations)
-        {
-            HashSet<int> productIDs = new HashSet<int>();
-            foreach (string detID in productAllocations.Keys)
-            {
-                foreach (ISOProductAllocation pan in productAllocations[detID])
-                {
-                    int? id = taskDataMapper.InstanceIDMap.GetADAPTID(pan.ProductIdRef);
-                    if (id.HasValue)
-                    {
-                        productIDs.Add(id.Value);
-                    }
-                }
-            }
-            return productIDs.ToList();
-        }
-
-        private Dictionary<string, List<ISOProductAllocation>> GetProductAllocationsByDeviceElement(ISOTask loggedTask, ISODevice dvc)
+        private ProductAllocationMap GetProductAllocationsByDeviceElement(ISOTask loggedTask, ISODevice dvc)
         {
             Dictionary<string, Dictionary<string, ISOProductAllocation>> reportedPANs = new Dictionary<string, Dictionary<string, ISOProductAllocation>>();
             int panIndex = 0; // This supports multiple direct PANs for the same DET
@@ -560,9 +469,11 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
                 .FirstOrDefault();
             int lowestLevel = GetLowestProductAllocationLevel(det?.GetRootDeviceElementHierarchy(), output);
             // Remove allocations for all other levels
-            return output
+            var pruned = output
                 .Where(x => TaskDataMapper.DeviceElementHierarchies.GetMatchingElement(x.Key)?.Depth == lowestLevel)
                 .ToDictionary(x => x.Key, x => x.Value);
+
+            return new ProductAllocationMap(pruned, TaskDataMapper);
         }
 
         private int GetLowestProductAllocationLevel(DeviceHierarchyElement isoDeviceElementHierarchy, Dictionary<string, List<ISOProductAllocation>> isoProductAllocations)
