@@ -4,10 +4,9 @@ using System.Diagnostics;
 using System.Linq;
 using AgGateway.ADAPT.ApplicationDataModel.LoggedData;
 using AgGateway.ADAPT.ApplicationDataModel.Representations;
+using AgGateway.ADAPT.ISOv4Plugin.ExtensionMethods;
 using AgGateway.ADAPT.ISOv4Plugin.ObjectModel;
 using AgGateway.ADAPT.ISOv4Plugin.ISOModels;
-using AgGateway.ADAPT.Representation.UnitSystem;
-using AgGateway.ADAPT.ISOv4Plugin.Representation;
 
 namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
 {
@@ -140,7 +139,8 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             else if (meter.Representation.Code == "vrProductIndex")
             {
                 string detID = _workingDataMapper.ISODeviceElementIDsByWorkingDataID[meter.Id.ReferenceId];
-                if (productAllocations.ContainsKey(detID)) //The DeviceElement for this meter exists in the list of allocations
+                ISODeviceElement deviceElement = _taskDataMapper.DeviceElementHierarchies.GetISODeviceElementFromID(detID);
+                if (productAllocations.GovernsDevice(deviceElement)) //The DeviceElement for this meter, or one of the DeviceElement's ancestors, exists in the list of allocations
                 {
                     var productAllocationsForDeviceElement = productAllocations[detID];
                     double numericValue = 0d;
