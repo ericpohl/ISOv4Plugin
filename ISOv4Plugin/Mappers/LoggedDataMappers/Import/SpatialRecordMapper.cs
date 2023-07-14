@@ -140,7 +140,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             {
                 string detID = _workingDataMapper.ISODeviceElementIDsByWorkingDataID[meter.Id.ReferenceId];
                 ISODeviceElement deviceElement = _taskDataMapper.DeviceElementHierarchies.GetISODeviceElementFromID(detID);
-                if (productAllocations.GovernsDevice(deviceElement)) //The DeviceElement for this meter, or one of the DeviceElement's ancestors, exists in the list of allocations
+                if (productAllocations.GovernDevice(deviceElement)) //The DeviceElement for this meter, or one of the DeviceElement's ancestors, exists in the list of allocations
                 {
                     var productAllocationsForDeviceElement = productAllocations[detID];
                     double numericValue = 0d;

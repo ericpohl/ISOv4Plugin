@@ -51,7 +51,7 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
 
             //Create vrProductIndex on relevant device elements if more than one product on this OperationData
             if (TimeLogMapper.GetDistinctProductIDs(TaskDataMapper, isoProductAllocations).Count > 1 && 
-                isoProductAllocations.GovernsDevice(isoDeviceElementHierarchy.DeviceElement))
+                isoProductAllocations.GovernDevice(isoDeviceElementHierarchy.DeviceElement))
             {
                 WorkingData workingData = CreateProductIndexWorkingData(deviceElementUse.Id.ReferenceId);
                 ISODeviceElementIDsByWorkingDataID.Add(workingData.Id.ReferenceId, isoDeviceElementHierarchy.DeviceElement.DeviceElementId);
