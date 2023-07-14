@@ -336,5 +336,13 @@ namespace AgGateway.ADAPT.ISOv4Plugin.ExtensionMethods
             }
             return value1.HasValue ? value1 : value2;
         }
+
+        /// <summary>
+        /// Determine if the dictionary of product allocations governs the device element or one of its ancestors in the device hierarchy
+        /// </summary>
+        public static bool GovernsDevice(this IDictionary<string, List<ISOProductAllocation>> productAllocations, ISODeviceElement deviceElement)
+        {
+            return deviceElement.Ancestors.Any(element => productAllocations.ContainsKey(element.DeviceElementId));           
+        }
     }
 }

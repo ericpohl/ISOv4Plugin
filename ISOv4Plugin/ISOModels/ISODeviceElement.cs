@@ -39,6 +39,17 @@ namespace AgGateway.ADAPT.ISOv4Plugin.ISOModels
         public IEnumerable<ISODeviceProperty> DeviceProperties { get { return Device.DeviceProperties.Where(dpt => DeviceObjectReferences.Select(dor => dor.DeviceObjectId).Contains(dpt.ObjectID)); } }
         public IEnumerable<ISODeviceElement> ChildDeviceElements { get { return Device.DeviceElements.Where(det => det.ParentObjectId == DeviceElementObjectId); } }
 
+        public IEnumerable<ISODeviceElement> Ancestors
+        { 
+            get
+            {
+                for(ISODeviceElement element = this; element != null; element = element.Parent as ISODeviceElement)
+                {
+                    yield return element;
+                }
+            }
+        }
+
         public override XmlWriter WriteXML(XmlWriter xmlBuilder)
         {
             xmlBuilder.WriteStartElement("DET");
