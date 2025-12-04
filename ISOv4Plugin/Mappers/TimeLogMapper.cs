@@ -475,8 +475,8 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
 
         private Product GetProductByProductAllocation(ISOProductAllocation pan)
         {
-            var adaptProductId = TaskDataMapper.InstanceIDMap.GetADAPTID(pan.ProductIdRef);
-            var adaptProduct = TaskDataMapper.AdaptDataModel.Catalog.Products.FirstOrDefault(x => x.Id.ReferenceId == adaptProductId);
+            int? adaptProductId = TaskDataMapper.InstanceIDMap.GetADAPTID(pan.ProductIdRef);
+            Product adaptProduct = TaskDataMapper.AdaptDataModel.Catalog.Products.FirstOrDefault(x => x.Id.ReferenceId == adaptProductId);
 
             // Add an error if ProductAllocation is referencing non-existent product
             if (adaptProduct == null)

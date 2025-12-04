@@ -141,6 +141,13 @@ namespace AgGateway.ADAPT.ISOv4Plugin.Mappers
             }
             else if (meter.Representation.Code == "vrProductIndex")
             {
+                var ts = spatialRecord.Timestamp;
+                bool verbose = (ts.Hour == 7 && ts.Minute == 23 && ts.Second == 51);
+                if (verbose)
+                {
+                    int x = 1;
+                }
+
                 string detID = _workingDataMapper.ISODeviceElementIDsByWorkingDataID[meter.Id.ReferenceId];
                 if (productAllocations.ContainsKey(detID)) //The DeviceElement for this meter exists in the list of allocations
                 {
